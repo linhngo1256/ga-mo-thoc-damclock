@@ -1,0 +1,925 @@
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE GLCD_HOMEPHONE_V1
+OBJECT MODULE PLACED IN GLCD HOMEPHONE V1.OBJ
+COMPILER INVOKED BY: D:\Program Files\KEILC 4\C51\BIN\C51.EXE GLCD HOMEPHONE V1.C BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include<regx52.h>
+   2          #include <INTRINS.H>
+   3          
+   4          #define uchar unsigned char 
+   5          #define CS  P2_3 //Chon chip
+   6          #define SDA P2_2 //Data SPI
+   7          #define AO  P2_1 //Chot du lieu Command va Data (C/D)
+   8          #define SCK P2_0 //Clock SPI
+   9          
+  10          sbit sda =  P3^1;
+  11          sbit scl =  P3^0;
+  12          sbit menu_key=P3^7;
+  13          sbit up_key=P3^6;
+  14          sbit down_key=P3^5;
+  15          sbit DQ = P1^0; 
+  16          uchar temp1,temp2,temp; 
+  17          
+  18          unsigned char gio,phut,giay,thang_al,ngay_al,mode = 0;
+  19          unsigned char time[7];
+  20          
+  21          unsigned char code font[][8] ={ 
+  22              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // ' '
+  23              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '!'
+  24              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '"'
+  25              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '#'
+  26              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '$'
+  27              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '%'
+  28              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '&'
+  29              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '''
+  30              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '('
+  31              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // ')'
+  32              {0x00,0x0C,0x1E,0x12,0x12,0x1E,0x0C,0x00},  // '*'
+  33              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '+'
+  34              {0x00,0x80,0xE0,0x60,0x00,0x00,0x00, 0x00},  // ','
+  35              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '-'
+  36              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '.'
+  37              {0x40,0x60,0x30,0x18,0x0C,0x06,0x02,0x00},  // '/'
+  38              {0x3C,0x7E,0x52,0x4A,0x46,0x7E,0x3C,0x00},  // '0'
+  39              {0x00,0x44,0x44,0x7E,0x7E,0x40,0x40,0x00},  // '1'
+  40              {0x44,0x66,0x72,0x52,0x52,0x5E,0x4C,0x00},  // '2'
+  41              {0x24,0x66,0x42,0x4A,0x4A,0x7E,0x34,0x00},  // '3'
+  42              {0x10,0x58,0x54,0x7E,0x7E,0x50,0x50,0x00},  // '4'
+  43              {0x2E,0x6E,0x4A,0x4A,0x4A,0x7A,0x32,0x00},  // '5'
+  44              {0x3C,0x7E,0x4A,0x4A,0x4A,0x7A,0x32,0x00},  // '6'
+  45              {0x06,0x06,0x62,0x72,0x1A,0x0E,0x06,0x00},  // '7'
+  46              {0x34,0x7E,0x4A,0x4A,0x4A,0x7E,0x34,0x00},  // '8'
+  47              {0x4C,0x5E,0x52,0x52,0x52,0x7E,0x3C,0x00},  // '9'
+  48              {0x00,0x00,0x66,0x66,0x00,0x00,0x00,0x00},  // ':'
+  49              {0x00,0x40,0x66,0x26,0x00,0x00,0x00,0x00},  // ';'
+  50              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '<'
+  51              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '='
+  52              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '>'
+  53              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '?'
+  54              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '@'
+  55              {0x7C,0x7E,0x12,0x12,0x12,0x7E,0x7C,0x00},  // 'A'
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 2   
+
+  56              {0x42,0x7E,0x7E,0x4A,0x4A,0x7E,0x34,0x00},  // 'B'
+  57              {0x3C,0x7E,0x42,0x42,0x42,0x66,0x24,0x00},  // 'C'
+  58              {0x42,0x7E,0x7E,0x42,0x42,0x7E,0x3C,0x00},  // 'D'
+  59              {0x42,0x7E,0x7E,0x4A,0x4A,0x42,0x66,0x00},  // 'E'
+  60              {0x42,0x7E,0x7E,0x4A,0x0A,0x02,0x06,0x00},  // 'F'
+  61              {0x3C,0x7E,0x42,0x42,0x52,0x72,0x74,0x00},  // 'G'
+  62              {0x7E,0x7E,0x08,0x08,0x08,0x7E,0x7E,0x00},  // 'H'
+  63              {0x00,0x00,0x42,0x7E,0x7E,0x42,0x00,0x00},  // 'I'
+  64              {0x20,0x60,0x40,0x42,0x7E,0x3E,0x02,0x00},  // 'J'
+  65              {0x42,0x7E,0x7E,0x08,0x1C,0x76,0x62,0x00},  // 'K'
+  66              {0x42,0x7E,0x7E,0x42,0x40,0x40,0x60,0x00},  // 'L'
+  67              {0x7E,0x7C,0x08,0x10,0x08,0x7C,0x7E,0x00},  // 'M'
+  68              {0x7E,0x7E,0x04,0x18,0x20,0x7E,0x7E,0x00},  // 'N'
+  69              {0x3C,0x7E,0x42,0x42,0x42,0x7E,0x3C,0x00},  // 'O'
+  70              {0x42,0x7E,0x7E,0x52,0x12,0x1E,0x0C,0x00},  // 'P'
+  71              {0x3C,0x7E,0x42,0x42,0x32,0x7E,0x5C,0x00},  // 'Q'
+  72              {0x42,0x7E,0x7E,0x12,0x32,0x5E,0x4C,0x00},  // 'R'
+  73              {0x24,0x6E,0x4A,0x5A,0x52,0x76,0x24,0x00},  // 'S'
+  74              {0x06,0x02,0x42,0x7E,0x7E,0x42,0x06,0x00},  // 'T'
+  75              {0x3E,0x7E,0x40,0x40,0x40,0x7E,0x3E,0x00},  // 'U'
+  76              {0x0E,0x1E,0x30,0x60,0x30,0x1E,0x0E,0x00},  // 'V'
+  77              {0x7E,0x7E,0x20,0x10,0x20,0x7E,0x7E,0x00},  // 'W'
+  78              {0x42,0x66,0x3C,0x18,0x3C,0x66,0x42,0x00},  // 'X'
+  79              {0x06,0x0E,0x48,0x78,0x78,0x4E,0x06,0x00},  // 'Y'
+  80              {0x46,0x62,0x72,0x5A,0x4E,0x46,0x62,0x00},  // 'Z'
+  81              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '['
+  82              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // backslash
+  83              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // ']'
+  84              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '^'
+  85              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '_'
+  86              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '`'
+  87              {0x20,0x74,0x54,0x54,0x3C,0x78,0x40,0x00},  // 'a'
+  88              {0x42,0x7E,0x3E,0x48,0x48,0x78,0x30,0x00},  // 'b'
+  89              {0x38,0x7C,0x44,0x44,0x44,0x6C,0x28,0x00},  // 'c'
+  90              {0x30,0x78,0x48,0x48,0x3E,0x7E,0x40,0x00},  // 'd'
+  91              {0x38,0x7C,0x54,0x54,0x54,0x5C,0x58,0x00},  // 'e'
+  92              {0x48,0x7C,0x7E,0x4A,0x02,0x06,0x04,0x00},  // 'f'
+  93              {0x4C,0x5E,0x52,0x52,0x7C,0x3E,0x02,0x00},  // 'g'
+  94              {0x42,0x7E,0x7E,0x10,0x08,0x78,0x70,0x00},  // 'h'
+  95              {0x00,0x00,0x48,0x7A,0x7A,0x40,0x00,0x00},  // 'i'
+  96              {0x20,0x60,0x40,0x40,0x42,0x7E,0x3E,0x00},  // 'j'
+  97              {0x42,0x7E,0x7E,0x10,0x38,0x6C,0x44,0x00},  // 'k'
+  98              {0x00,0x00,0x42,0x7E,0x7E,0x40,0x00,0x00},  // 'l'
+  99              {0x7C,0x7C,0x08,0x30,0x0C,0x7C,0x78,0x00},  // 'm'
+ 100              {0x7C,0x7C,0x04,0x04,0x04,0x7C,0x78,0x00},  // 'n'
+ 101              {0x38,0x7C,0x44,0x44,0x44,0x7C,0x38,0x00},  // 'o'
+ 102              {0x44,0x7C,0x7C,0x54,0x14,0x1C,0x08,0x00},  // 'p'
+ 103              {0x0C,0x1E,0x12,0x52,0x7C,0x7E,0x42,0x00},  // 'q'
+ 104              {0x44,0x7C,0x78,0x4C,0x04,0x0C,0x08,0x00},  // 'r'
+ 105              {0x48,0x5C,0x54,0x54,0x54,0x74,0x24,0x00},  // 's'
+ 106              {0x04,0x04,0x3E,0x7E,0x44,0x64,0x24,0x00},  // 't'
+ 107              {0x3C,0x7C,0x40,0x40,0x3C,0x7C,0x40,0x00},  // 'u'
+ 108              {0x1C,0x3C,0x60,0x40,0x20,0x3C,0x1C,0x00},  // 'v'
+ 109              {0x3C,0x7C,0x40,0x30,0x40,0x7C,0x3C,0x00},  // 'w'
+ 110              {0x44,0x6C,0x38,0x10,0x38,0x6C,0x44,0x00},  // 'x'
+ 111              {0x4C,0x5C,0x50,0x50,0x50,0x7C,0x3C,0x00},  // 'y'
+ 112              {0x44,0x64,0x74,0x54,0x5C,0x4C,0x44,0x00},  // 'z'
+ 113              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '{'
+ 114              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '|'
+ 115              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // '}'
+ 116              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  // ->
+ 117              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   // <-
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 3   
+
+ 118          };
+ 119          
+ 120          unsigned char code font_big_1[][8] ={  
+ 121              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 122              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 123              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 124              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 125              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 126              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 127              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 128              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 129              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 130              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 131              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 132              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 133              {0x00,0x1E,0x1E,0x1E,0x1E,0x0E,0xFE,0xFE},   
+ 134              {0x00,0xFE,0xFE,0xFE,0xFC,0xF8,0xF0,0xE0},   
+ 135              {0x00,0xF8,0xFC,0xFE,0xFE,0x1E,0x0E,0x0E},   
+ 136              {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xC3,0xC3},   
+ 137              {0x00,0xF8,0xFC,0xFE,0xFE,0x1E,0x0E,0x8E},   
+ 138              {0x00,0x38,0x38,0x38,0x38,0x38,0xFE,0xFE},   
+ 139              {0x00,0x38,0x3C,0x3E,0x3E,0x1E,0x0E,0x0E},   
+ 140              {0x00,0x38,0x3C,0x3E,0x1E,0x0E,0xCE,0xCE},   
+ 141              {0x00,0xFE,0xFE,0xFE,0xFE,0x00,0x00,0x00},   
+ 142              {0x00,0xFE,0xFE,0xFE,0xFE,0xFE,0xCE,0xCE},   
+ 143              {0x00,0xF8,0xFC,0xFE,0xFE,0x9E,0xCE,0xCE},   
+ 144              {0x00,0x1E,0x1E,0x1E,0x1E,0x0E,0x0E,0x0E},   
+ 145              {0x00,0x38,0x7C,0xFE,0xFE,0xDE,0xCE,0xCE},   
+ 146              {0x00,0xF8,0xFC,0xFE,0xFE,0xDE,0x8E,0x8E},   
+ 147              {0x00,0x00,0x00,0x00,0x00,0x18,0x3C,0x3C}  
+ 148          };  
+ 149          ///////////////////////////////////////////////////////////////////////
+ 150          unsigned char code font_big_2[][8] ={  
+ 151              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 152              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 153              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 154              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 155              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 156              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 157              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 158              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 159              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 160              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},    
+ 161              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 162              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 163              {0xFE,0xFE,0x0E,0x1E,0x1E,0x1E,0x1E,0x00},   
+ 164              {0xC0,0x80,0x00,0xFE,0xFE,0xFE,0xFE,0x00},   
+ 165              {0x0E,0x0E,0x1E,0x3E,0x3E,0x3C,0x38,0x00},   
+ 166              {0xC3,0xC3,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF},   
+ 167              {0xCE,0xEE,0x7E,0xFE,0xFE,0xFC,0xF8,0x00},   
+ 168              {0xFE,0xFE,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 169              {0x0E,0x0E,0x9E,0xFE,0xFE,0xFC,0xF8,0x00},   
+ 170              {0xCE,0xCE,0xDE,0xFE,0xFE,0x7C,0x38,0x00},   
+ 171              {0xFE,0xFE,0xFE,0xFE,0x00,0x00,0x00,0x00},   
+ 172              {0xCE,0xCE,0xCE,0xDE,0xDE,0x9E,0x1E,0x00},   
+ 173              {0xCE,0xCE,0xDE,0xDE,0xDE,0x9C,0x18,0x00},  
+ 174              {0x8E,0xCE,0xEE,0xFE,0xFE,0x7E,0x3E,0x00},   
+ 175              {0xCE,0xCE,0xDE,0xFE,0xFE,0x7C,0x38,0x00},   
+ 176              {0x8E,0x8E,0xDE,0xFE,0xFE,0xFC,0xF8,0x00},   
+ 177              {0x3C,0x3C,0x18,0x00,0x00,0x00,0x00,0x00}  
+ 178          }; 
+ 179          unsigned char code font_big_3[][8] ={   
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 4   
+
+ 180              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 181              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 182              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 183              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},    
+ 184              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 185              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},    
+ 186              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 187              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 188              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 189              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},    
+ 190              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 191              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 192              {0x00,0x00,0x00,0x00,0x00,0x70,0x7F,0x7F},   
+ 193              {0x00,0x7F,0x7F,0x7F,0x7F,0x00,0x01,0x03},   
+ 194              {0x00,0x1F,0x3F,0x7F,0x7F,0x78,0x70,0x70},   
+ 195              {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x87,0x87},  
+ 196              {0x00,0x1F,0x3F,0x7F,0x7F,0x7E,0x77,0x73},   
+ 197              {0x00,0x70,0x70,0x70,0x70,0x70,0x7F,0x7F},   
+ 198              {0x00,0x60,0x70,0x78,0x78,0x7C,0x7C,0x7E},   
+ 199              {0x00,0x1C,0x3C,0x7C,0x78,0x70,0x71,0x71},   
+ 200              {0x00,0x03,0x07,0x07,0x07,0x07,0x07,0x07},   
+ 201              {0x00,0x1C,0x3D,0x7D,0x7D,0x79,0x71,0x71},   
+ 202              {0x00,0x1F,0x3F,0x7F,0x7F,0x7B,0x71,0x71},   
+ 203              {0x00,0x00,0x00,0x00,0x00,0x00,0x7E,0x7F},   
+ 204              {0x00,0x1E,0x3F,0x7F,0x7F,0x7B,0x71,0x71},   
+ 205              {0x00,0x18,0x39,0x7B,0x7B,0x7B,0x73,0x73},   
+ 206              {0x00,0x00,0x00,0x00,0x00,0x18,0x3C,0x3C}  
+ 207          }; 
+ 208          unsigned char code font_big_4[][8] ={    
+ 209              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 210              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 211              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 212              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},   
+ 213              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},  
+ 214              {0x22,0x36,0x3E,0x1C,0x08,0x0E,0x11,0x21},   
+ 215              {0x41,0x8E,0x51,0x21,0x41,0x8A,0x49,0x29},   
+ 216              {0x19,0x0E,0x08,0x08,0x3E,0x3E,0x1C,0x08},   
+ 217              {0x2C,0x24,0x24,0x2C,0x24,0x24,0x2C,0x18},  
+ 218              {0x3C,0x3C,0x2C,0x24,0x24,0x2C,0x24,0x24},   
+ 219              {0x3C,0x7E,0xFF,0xFF,0xFF,0xFF,0x7E,0x3C},  
+ 220              {0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10},  
+ 221              {0x7F,0x7F,0x70,0x00,0x00,0x00,0x00,0x00},   
+ 222              {0x07,0x0F,0x1F,0x3F,0x7F,0x7F,0x7F,0x00},   
+ 223              {0x70,0x70,0x78,0x7C,0x7C,0x3C,0x1C,0x00},  
+ 224              {0x87,0x87,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF},   
+ 225              {0x71,0x70,0x78,0x7F,0x7F,0x3F,0x1F,0x00},   
+ 226              {0x7F,0x7F,0x70,0x70,0x70,0x70,0x70,0x00},  
+ 227              {0x76,0x77,0x73,0x73,0x71,0x71,0x70,0x00},   
+ 228              {0x71,0x71,0x7B,0x7F,0x7F,0x3F,0x1E,0x00},   
+ 229              {0x7F,0x7F,0x7F,0x7F,0x07,0x07,0x07,0x00},  
+ 230              {0x71,0x71,0x7B,0x7F,0x7F,0x3F,0x1F,0x00},   
+ 231              {0x71,0x71,0x7B,0x7F,0x7F,0x3F,0x1F,0x00},   
+ 232              {0x7F,0x7F,0x03,0x01,0x00,0x00,0x00,0x00},   
+ 233              {0x71,0x71,0x7B,0x7F,0x7F,0x3F,0x1E,0x00},   
+ 234              {0x73,0x73,0x7B,0x7F,0x7F,0x3F,0x1F,0x00},   
+ 235              {0x3C,0x3C,0x18,0x00,0x00,0x00,0x00,0x00}  
+ 236          };
+ 237          const unsigned char code lich[]={ 
+ 238          0x1b,0x0c//1999 
+ 239          ,0x11,0x12,0x03,0x04,0x15,0x06,0x07,0x18,0x09,0x1a,0x1b,0x0c                      
+ 240          ,0x11,0x12,0x03,0x14,0x04,0x15,0x06,0x07,0x18,0x09,0x1a,0x0b,0x1c                 
+ 241          ,0x11,0x12,0x03,0x14,0x05,0x16,0x07,0x08,0x19,0x0a,0x1b,0x0c                      
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 5   
+
+ 242          ,0x11,0x12,0x03,0x14,0x15,0x06,0x17,0x08,0x09,0x1a,0x0b,0x1c                      
+ 243          ,0x01,0x12,0x02,0x13,0x14,0x05,0x16,0x07,0x18,0x09,0x1a,0x0b,0x1c                 
+ 244          ,0x01,0x12,0x03,0x14,0x05,0x16,0x17,0x08,0x19,0x0a,0x1b,0x0c//2005                
+ 245          ,0x11,0x02,0x13,0x04,0x05,0x16,0x17,0x07,0x18,0x19,0x0a,0x1b,0x0c //2006         
+ 246          ,0x11,0x02,0x13,0x04,0x05,0x16,0x07,0x18,0x19,0x1a,0x0b,0x1c                      
+ 247          ,0x11,0x02,0x03,0x14,0x05,0x06,0x17,0x08,0x19,0x0a,0x1b,0x1c                     
+ 248          ,0x11,0x12,0x03,0x04,0x15,0x05,0x06,0x17,0x08,0x19,0x0a,0x1b,0x1c  
+ 249          ,0x11,0x02,0x13,0x04,0x15,0x06,0x07,0x18,0x09,0x1A,0x0B,0x1C///2010 
+ 250          ,0x11,0x02,0x13,0x14,0x05,0x16,0x07,0x08,0x19,0x0A,0x1B,0x0C       
+ 251          ,0x11,0x02,0x13,0x14,0x04,0x15,0x06,0x17,0x08,0x19,0x0a,0x1b,0x0c      
+ 252          ,0x11,0x02,0x13,0x04,0x15,0x16,0x07,0x18,0x09,0x1a,0x0b,0x1c              
+ 253          ,0x01,0x12,0x03,0x14,0x05,0x16,0x07,0x18,0x19,0x09,0x1a,0x0b,0x1c            
+ 254          ,0x01,0x12,0x03,0x04,0x15,0x06,0x17,0x18,0x19,0x0a,0x1b,0x0c                  
+ 255          ,0x11,0x02,0x13,0x04,0x05,0x16,0x07,0x18,0x19,0x0a,0x1b,0x1c                    
+ 256          ,0x01,0x12,0x03,0x14,0x05,0x06,0x16,0x07,0x18,0x09,0x1a,0x1b,0x1c//2017          
+ 257          ,0x01,0x12,0x03,0x14,0x05,0x06,0x17,0x08,0x19,0x0a,0x1b,0x1c                      
+ 258          ,0x11,0x02,0x13,0x04,0x15,0x06,0x07,0x18,0x09,0x0a,0x1b,0x1c                      
+ 259          ,0x01,0x12,0x13,0x14,0x04,0x15,0x06,0x07,0x18,0x09,0x1a,0x0b,0x1c
+ 260          };
+ 261          const unsigned int code count_year1[]={
+ 262            0,59,413,797,1151,1506,1890,2244,
+ 263            2628,2983,3337,3721,4075,4429,4813,
+ 264            5168,5552,5906,6261,6645,6999,7353,
+ 265            7737,8091,8446,8830,9184,9568,9922,
+ 266            10276,10660,11015,11369,11753,12108,
+ 267            12492,12846,13200,13584,13938,14292,
+ 268            14676,15031,15386,15770,16124,16508,
+ 269            16862,17216,17600,17954,18309,18693,
+ 270            19048,19431,19786,20140,20523,20878,
+ 271            21232,21616,21971,22325,22709,23063,
+ 272            23447,23801,24156,24540,24894,25249,
+ 273            25633,25987,26371,26725,27079,27463,
+ 274            27818,28172,28556,28911,29265,29649,
+ 275            30003,30387,30741,31096,31480,31834,
+ 276            32189,32572,32926,33310,33664,34019,
+ 277            34403,34758,35112,35496,35850,36204,36588};
+ 278          const unsigned int code count_year[]={
+ 279            25 ,391 ,756 ,1121 ,1486 ,1852 ,2217 ,
+ 280            2582 ,2947 ,3313 ,3678 ,4043 ,4408 ,
+ 281            4774 ,5139 ,5504 ,5869 ,6235 ,6600 ,
+ 282            6965 ,7330 ,7696 ,8061 ,8426 ,8791 ,
+ 283            9157 ,9522 ,9887 ,10252 ,10618 ,
+ 284            10983 ,11348 ,11713 ,12079 ,12444 ,
+ 285            12809 ,13174 ,13540 ,13905 ,14270 ,
+ 286            14635 ,15001 ,15366 ,15731 ,16096 ,
+ 287            16462 ,16827 ,17192 ,17557 ,17923 ,
+ 288            18288 ,18653 ,19018 ,19384 ,19749 ,
+ 289            20114 ,20479 ,20845 ,21210 ,21575 ,
+ 290            21940 ,22306 ,22671 ,23036 ,23401 ,
+ 291            23767 ,24132 ,24497 ,24862 ,25228 ,
+ 292            25593 ,25958 ,26323 ,26689 ,27054 ,
+ 293            27419 ,27784 ,28150 ,28515 ,28880 ,
+ 294            29245 ,29611 ,29976 ,30341 ,30706 ,
+ 295            31072 ,31437 ,31802 ,32167 ,32533 ,
+ 296            32898 ,33263 ,33628 ,33994 ,34359 ,
+ 297            34724 ,35089 ,35455 ,35820 ,36185 ,36550
+ 298          };
+ 299          const unsigned int code sothang[]={
+ 300            0,2,14,27,39,51,64,76,89,101,113,
+ 301            126,138,150,163,175,188,200,212,
+ 302            225,237,249,262,274,286,299,311,
+ 303            324,336,348,361,373,385,398,410,
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 6   
+
+ 304            423,435,447,460,472,484,497,509,
+ 305            521,534,546,559,571,583,596,608,
+ 306            620,633,645,658,670,682,695,707,
+ 307            719,732,744,756,769,781,794,806,
+ 308            818,831,843,855,868,880,893,905,
+ 309            917,930,942,954,967,979,991,1004,
+ 310           1016,1029,1041,1053,1066,1078,1090,
+ 311           1103,1115,1128,1140,1152,1165,1177,
+ 312           1189,1202,1214,1226,1239
+ 313          };
+ 314          const unsigned int code count_month[] ={0,0,31,59,90,120,151,181,212,243,273,304,334}; 
+ 315          const unsigned int code count_month1[]={0,0,31,60,91,121,152,182,213,244,274,305,335};
+ 316          const unsigned int code nd[]={
+ 317            500,485,470,450,430,405,394,384,
+ 318            368,352,342,332,322,315,308,300,
+ 319            292,286,275,268,262,256,246,236,
+ 320            226,216,212,202,188,180,172,165,
+ 321            156,150,145,140,138,135,130,125,
+ 322            120,115,110,105,100,98,97,93,90,85
+ 323          };
+ 324           
+ 325          unsigned char hex_dec(unsigned char hex){ 
+ 326   1        return((hex>>4)*10 +(hex & 0xf));} 
+ 327          unsigned char dec_hex(unsigned char dec){  
+ 328   1        return(((dec/10) <<4 )+(dec%10));} 
+ 329          unsigned int tinhlich(unsigned char ngayduong,thangduong,nam)
+ 330          {
+ 331   1        unsigned int songay,t5;
+ 332   1        unsigned char ngayam,thangam;
+ 333   1        ngayduong   = hex_dec(ngayduong);
+ 334   1        thangduong  = hex_dec(thangduong);
+ 335   1        nam     = hex_dec(nam);
+ 336   1      if(nam%4==0) songay=count_year[nam]+count_month1[thangduong]+ngayduong;
+ 337   1      else songay=count_year[nam]+count_month[thangduong]+ngayduong; 
+ 338   1      songay--; 
+ 339   1      songay=songay-count_year1[nam]; 
+ 340   1      
+ 341   1      for(t5=sothang[nam];t5<262;t5++) 
+ 342   1      {
+ 343   2        if(songay==0)break;
+ 344   2        if(songay>50000)break;
+ 345   2      
+ 346   2        if(lich[t5]>16) { songay=songay-30;}
+ 347   2        else            { songay=songay-29;}
+ 348   2      }
+ 349   1          if(songay==0) { if(lich[t5-1]>16) { thangam=lich[t5-1]-16; ngayam=30; }
+ 350   2                          else              { thangam=lich[t5-1];    ngayam=29; } }
+ 351   1        else            { if(lich[t5-1]>16) { thangam=lich[t5-1]-16; ngayam=songay+30; }
+ 352   2                          else              { thangam=lich[t5-1];    ngayam=songay+29; } }
+ 353   1      
+ 354   1        ngayam  = dec_hex(ngayam);
+ 355   1        thangam = dec_hex(thangam);
+ 356   1        t5= thangam << 8  ;
+ 357   1        t5 = t5 + ngayam;
+ 358   1        return(t5);
+ 359   1      }
+ 360          ///////////////////////////////////////////////////////  
+ 361          void delay(unsigned int i)
+ 362           { unsigned int j;
+ 363   1       while(i-->0)
+ 364   1       {   
+ 365   2       for(j=0;j<400;j++)
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 7   
+
+ 366   2       {
+ 367   3       }
+ 368   2       }
+ 369   1       } 
+ 370           void delay_ms(unsigned int t)
+ 371           {
+ 372   1       unsigned int x,y;
+ 373   1       for(x=0; x<t; x++);
+ 374   1       {
+ 375   2       for(y=0; y<123; y++);   //delay 1ms
+ 376   2       }
+ 377   1       }
+ 378           void delay_lcd(unsigned int t){
+ 379   1       unsigned int i;
+ 380   1       unsigned char j;
+ 381   1       for(i=0;i<t;i++)
+ 382   1       for(j=0;j<125;j++);
+ 383   1       } 
+ 384           void delay_18B20(unsigned int i)
+ 385           {
+ 386   1       while(i--);
+ 387   1       } 
+ 388           void lcd_write(unsigned char cd, unsigned char byte){ 
+ 389   1        unsigned char h;
+ 390   1        CS=0;
+ 391   1        if(cd)AO=1; 
+ 392   1        else AO=0; 
+ 393   1        for(h=0;h<8;h++){
+ 394   2          if(!(byte&0x80))SDA=0; 
+ 395   2          else SDA=1;
+ 396   2          SCK=0;
+ 397   2          SCK=1;
+ 398   2          byte<<=1;
+ 399   2        }
+ 400   1        AO=~AO;
+ 401   1        CS=1;
+ 402   1      } 
+ 403          void lcd_gotoxy(unsigned char x, unsigned char y) 
+ 404          {
+ 405   1        x=x*8; 
+ 406   1        lcd_write(0,(x & 0x0f));
+ 407   1        lcd_write(0,((x >> 4) & 0x07)|0x10);
+ 408   1        lcd_write(0,(y & 0x0f)|0xb0);
+ 409   1      } 
+ 410          void lcd_putchar16_1(char dat) 
+ 411          {
+ 412   1        unsigned char v;
+ 413   1        if((dat >= 0x20) && (dat <= 0x3a)){
+ 414   2          dat=dat-32;
+ 415   2          for(v=0;v<8;v++)
+ 416   2            lcd_write(1, font_big_1[dat][v]);
+ 417   2        }
+ 418   1      } 
+ 419          void lcd_putchar16_2(char dat) 
+ 420          {
+ 421   1        unsigned char v;
+ 422   1        if((dat >= 0x20) && (dat <= 0x3a)){
+ 423   2          dat=dat-32;
+ 424   2          for(v=0;v<8;v++)
+ 425   2            lcd_write(1, font_big_2[dat][v]);
+ 426   2        }
+ 427   1      } 
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 8   
+
+ 428          void lcd_putchar16_3(char dat) 
+ 429          {
+ 430   1        unsigned char v;
+ 431   1        if((dat >= 0x20) && (dat <= 0x3a)){
+ 432   2          dat=dat-32;
+ 433   2          for(v=0;v<8;v++)
+ 434   2            lcd_write(1, font_big_3[dat][v]);
+ 435   2        }
+ 436   1      } 
+ 437          void lcd_putchar16_4(char dat) 
+ 438          {
+ 439   1        unsigned char v;
+ 440   1        if((dat >= 0x20) && (dat <= 0x3a)){
+ 441   2          dat=dat-32;
+ 442   2          for(v=0;v<8;v++)
+ 443   2            lcd_write(1, font_big_4[dat][v]);
+ 444   2        }
+ 445   1      } 
+ 446          void lcd_puts_4(char *s) 
+ 447          {
+ 448   1        while(*s)
+ 449   1          lcd_putchar16_4(*s++);
+ 450   1      } 
+ 451          void lcd_clear() 
+ 452          {
+ 453   1        unsigned char u,w;
+ 454   1        for(u=0;u<8;u++){
+ 455   2          lcd_gotoxy(0,u);
+ 456   2          for(w=0;w<130;w++)
+ 457   2            lcd_write(1,0);
+ 458   2        }
+ 459   1        lcd_gotoxy(0,0);
+ 460   1      } 
+ 461          void lcd_putchar(char dat) 
+ 462          {
+ 463   1        unsigned char v;
+ 464   1        if((dat >= 0x20) && (dat <= 0x7f)){
+ 465   2          dat=dat-32;
+ 466   2          for(v=0;v<8;v++)
+ 467   2            lcd_write(1, font[dat][v]);
+ 468   2        }
+ 469   1      } 
+ 470          void lcd_putchar_amban(char dat) 
+ 471          {
+ 472   1        unsigned char v;
+ 473   1        if((dat >= 0x20) && (dat <= 0x7f)){
+ 474   2          dat=dat-32;
+ 475   2          for(v=0;v<8;v++)
+ 476   2            lcd_write(1, ~font[dat][v]);
+ 477   2        }
+ 478   1      }
+ 479          void lcd_puts_amban(char *s) 
+ 480          {
+ 481   1        while(*s)
+ 482   1          lcd_putchar_amban(*s++);
+ 483   1      } 
+ 484          void lcd_puts(char *s) 
+ 485          {
+ 486   1        while(*s)
+ 487   1          lcd_putchar(*s++);
+ 488   1      } 
+ 489          void lcd_init() 
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 9   
+
+ 490          {
+ 491   1        lcd_write(0,0xE2); //Reset
+ 492   1        delay_lcd(100);    //Delay 100ms
+ 493   1        lcd_write(0,0xAF); //Display ON, 0xAE - OFF
+ 494   1        lcd_write(0,0x2F); //Power control  
+ 495   1        lcd_clear(); //Xoa man hinh
+ 496   1      }
+ 497          void Init_DS18B20(void) 
+ 498          {
+ 499   1         unsigned char x=0;
+ 500   1         DQ = 1;          //DQ reset
+ 501   1         delay_18B20(8);  //Slight delay
+ 502   1         DQ = 0;          //SCM will be pulled down DQ
+ 503   1         delay_18B20(80); //Accurate delay Greater than 480us
+ 504   1         DQ = 1;          //Pulled the bus
+ 505   1         delay_18B20(14);
+ 506   1         x=DQ;            //After slight delay is initialized if x = 0 x = 1 is initialized successfully defeat
+ 507   1         delay_18B20(20);
+ 508   1      } 
+ 509          unsigned char ReadOneChar(void)
+ 510          {
+ 511   1        uchar i=0;
+ 512   1        uchar dat = 0;
+ 513   1        for (i=8;i>0;i--)
+ 514   1         {
+ 515   2            DQ = 0; // To the pulse signal
+ 516   2            dat>>=1;
+ 517   2            DQ = 1; // To the pulse signal
+ 518   2            if(DQ)
+ 519   2            dat|=0x80;
+ 520   2            delay_18B20(4);
+ 521   2         }
+ 522   1        return(dat);
+ 523   1      } 
+ 524          void WriteOneChar(uchar dat)
+ 525          {
+ 526   1        unsigned char i=0;
+ 527   1        for (i=8; i>0; i--)
+ 528   1        {
+ 529   2            DQ = 0;
+ 530   2          DQ = dat&0x01;
+ 531   2            delay_18B20(5);
+ 532   2          DQ = 1;
+ 533   2            dat>>=1;
+ 534   2       }
+ 535   1      }
+ 536           
+ 537          void ReadTemperature(void)
+ 538          {
+ 539   1        unsigned char a=0;
+ 540   1        unsigned char b=0;
+ 541   1        unsigned char t=0;
+ 542   1      
+ 543   1        Init_DS18B20();
+ 544   1        WriteOneChar(0xCC);     // Skip read serial number column number of operations
+ 545   1        WriteOneChar(0x44);   // Start temperature conversion
+ 546   1      
+ 547   1        delay_18B20(100);       // this message is wery important
+ 548   1      
+ 549   1        Init_DS18B20();
+ 550   1        WriteOneChar(0xCC);   //Skip read serial number column number of operations
+ 551   1        WriteOneChar(0xBE);   //Read the temperature register, etc. (a total of 9 registers readable) is the tempe
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 10  
+
+             -rature of the first two
+ 552   1      
+ 553   1        delay_18B20(100);
+ 554   1      
+ 555   1        a=ReadOneChar();      //Read the low temperature
+ 556   1        b=ReadOneChar();      //Read the high temperature
+ 557   1        temp1=b<<4;
+ 558   1        temp1+=(a&0xf0)>>4;
+ 559   1        temp2=a&0x0f;
+ 560   1        temp=((b*256+a)>>4);    //In addition to the current collection temperature of 16 was the actual tempera
+             -ture
+ 561   1      }
+ 562          //////////////////////////////////////////////////////
+ 563           void start(void) 
+ 564           {        
+ 565   1       scl=1;
+ 566   1       sda=1; 
+ 567   1       _nop_();
+ 568   1       _nop_();
+ 569   1       sda=0;
+ 570   1       _nop_();
+ 571   1       scl=0;
+ 572   1       }
+ 573           void stop(void)  
+ 574           {   
+ 575   1       scl=0;
+ 576   1       _nop_();
+ 577   1       sda=0;
+ 578   1       _nop_();
+ 579   1       scl=1;
+ 580   1       _nop_();
+ 581   1       sda=1;
+ 582   1       }
+ 583           bit write(unsigned char x)
+ 584           {  
+ 585   1       unsigned char i;
+ 586   1       bit k; 
+ 587   1       for(i=0;i<8;i++)
+ 588   1       {
+ 589   2       sda=(x&0x80);
+ 590   2       scl=1;           
+ 591   2       _nop_();
+ 592   2       _nop_();       
+ 593   2       scl=0;
+ 594   2       x<<=1;
+ 595   2       }
+ 596   1       sda=1;
+ 597   1       scl=1;
+ 598   1       _nop_();
+ 599   1       _nop_();
+ 600   1       k=sda ;
+ 601   1       scl=0;
+ 602   1       _nop_();  
+ 603   1       return k ;
+ 604   1       }
+ 605           unsigned char read(bit ack)
+ 606           {  
+ 607   1       unsigned char Data,i;
+ 608   1       sda=1; 
+ 609   1       for(i=0;i<8;i++)
+ 610   1       {
+ 611   2       scl=1; 
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 11  
+
+ 612   2       Data<<=1;
+ 613   2       Data=Data|sda;
+ 614   2       scl=0;
+ 615   2       }
+ 616   1       scl =0;    
+ 617   1       sda=ack;
+ 618   1       scl=1; 
+ 619   1       _nop_();
+ 620   1       _nop_();
+ 621   1       scl=0;
+ 622   1       _nop_();
+ 623   1       sda = 1;
+ 624   1       scl = 1;
+ 625   1       return Data;
+ 626   1       }
+ 627           void read_ds(void)
+ 628           {    
+ 629   1       int i;
+ 630   1       start();
+ 631   1       write(0xd0);
+ 632   1       write(0x00);
+ 633   1       start();
+ 634   1       write(0xd1);
+ 635   1       for(i=0;i<6;i++)
+ 636   1       time[i] = read(0); 
+ 637   1       time[6] = read(1);
+ 638   1       stop();    
+ 639   1       }
+ 640           void write_ds(void)
+ 641           {
+ 642   1       unsigned char t;
+ 643   1       start();
+ 644   1       write(0xd0);
+ 645   1       write(0x0);
+ 646   1       for(t=0;t<7;t++)
+ 647   1       write(time[t]);
+ 648   1       stop();
+ 649   1       }
+ 650           void am_lich (bit k)
+ 651           {  
+ 652   1       unsigned int t;
+ 653   1       if((time[2]==0 & time[1] ==0 & time[0] < 3) | (k==1) ) //Tinh lich 00h00p03s
+ 654   1       {
+ 655   2       t = tinhlich(time[4],time[5],time[6]);     
+ 656   2       ngay_al=t & 0xff;
+ 657   2       thang_al= t >> 8;  
+ 658   2       };   
+ 659   1       }
+ 660           unsigned char tang(unsigned char bcd,unsigned char min,unsigned char max)
+ 661           {  
+ 662   1       if(bcd>=max) bcd = min;
+ 663   1       else if ((bcd& 0xf)==9)  bcd = bcd + 0x10 - 0x9;   
+ 664   1       else bcd++;
+ 665   1       return bcd;
+ 666   1       }
+ 667           unsigned char giam(unsigned char bcd,unsigned char min,unsigned char max)
+ 668           {
+ 669   1       if(bcd<=min) bcd = max;
+ 670   1       else if ((bcd& 0xf)==0)  bcd = bcd - 0x10 + 0x9;       
+ 671   1       else bcd--;
+ 672   1       return bcd;
+ 673   1       }
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 12  
+
+ 674          void scan_key (void)
+ 675          {
+ 676   1       static unsigned char l;
+ 677   1       if(menu_key==0)
+ 678   1       {
+ 679   2       delay(10);
+ 680   2       if(menu_key==0)
+ 681   2       {
+ 682   3       while(menu_key==0 & l < 20){ l++; delay(10);};
+ 683   3       delay(10);
+ 684   3       if(l<20)
+ 685   3       {
+ 686   4       mode++;
+ 687   4       if( mode  > 7 )
+ 688   4       {
+ 689   5       mode = 0;
+ 690   5       write_ds(); 
+ 691   5       am_lich (1);
+ 692   5       }
+ 693   4       }
+ 694   3       if(l>=20)
+ 695   3       {
+ 696   4       mode = 0; 
+ 697   4       am_lich (1);
+ 698   4       }
+ 699   3        }
+ 700   2        }
+ 701   1       else if(up_key==0)
+ 702   1       {
+ 703   2       delay(10);
+ 704   2       if(up_key==0)
+ 705   2       {
+ 706   3       while(up_key==0 & l < 20){ l++; delay(10);};
+ 707   3       delay(10);
+ 708   3       if(l>=20) 
+ 709   3       {
+ 710   4       if    (mode ==1 ) time[0] = tang(time[0],0   ,0x59);
+ 711   4       else if(mode ==2 ) time[1] = tang(time[1],0   ,0x59);
+ 712   4       else if(mode ==3 ) time[2] = tang(time[2],0   ,0x23);
+ 713   4       else if(mode ==4 ) time[3] = tang(time[3],0x1 ,0x07);
+ 714   4       else if(mode ==5 ) time[4] = tang(time[4],1   ,0x31);
+ 715   4       else if(mode ==6 ) time[5] = tang(time[5],1   ,0x12);
+ 716   4       else if(mode ==7 ) time[6] = tang(time[6],0x1 ,0x20);
+ 717   4       }  
+ 718   3       if(l<20)
+ 719   3       {
+ 720   4       if    (mode ==1 ) time[0] = tang(time[0],0   ,0x59);
+ 721   4       else if(mode ==2 ) time[1] = tang(time[1],0   ,0x59);
+ 722   4       else if(mode ==3 ) time[2] = tang(time[2],0   ,0x23);
+ 723   4       else if(mode ==4 ) time[3] = tang(time[3],0x1 ,0x07);
+ 724   4       else if(mode ==5 ) time[4] = tang(time[4],1   ,0x31);
+ 725   4       else if(mode ==6 ) time[5] = tang(time[5],1   ,0x12);
+ 726   4       else if(mode ==7 ) time[6] = tang(time[6],0x1 ,0x20);
+ 727   4       }  
+ 728   3       }
+ 729   2       }  
+ 730   1       else if(down_key==0)
+ 731   1       {
+ 732   2       delay(10);
+ 733   2       if(down_key==0)
+ 734   2       {
+ 735   3       while(down_key==0 & l < 20){ l++; delay(10);};
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 13  
+
+ 736   3       delay(10);
+ 737   3       if(l>=20)
+ 738   3       {
+ 739   4       if    (mode ==1 ) time[0] = giam(time[0],0   ,0x59); 
+ 740   4       else if(mode ==2 ) time[1] = giam(time[1],0   ,0x59); 
+ 741   4       else if(mode ==3 ) time[2] = giam(time[2],0   ,0x23); 
+ 742   4       else if(mode ==4 ) time[3] = giam(time[3],0x1 ,0x07); 
+ 743   4       else if(mode ==5 ) time[4] = giam(time[4],1   ,0x31); 
+ 744   4       else if(mode ==6 ) time[5] = giam(time[5],1   ,0x12); 
+ 745   4       else if(mode ==7 ) time[6] = giam(time[6],0x1 ,0x20); 
+ 746   4       }  
+ 747   3       if(l<20)
+ 748   3       {
+ 749   4       if    (mode ==1 ) time[0] = giam(time[0],0   ,0x59); 
+ 750   4       else if(mode ==2 ) time[1] = giam(time[1],0   ,0x59); 
+ 751   4       else if(mode ==3 ) time[2] = giam(time[2],0   ,0x23); 
+ 752   4       else if(mode ==4 ) time[3] = giam(time[3],0x1 ,0x07); 
+ 753   4       else if(mode ==5 ) time[4] = giam(time[4],1   ,0x31); 
+ 754   4       else if(mode ==6 ) time[5] = giam(time[5],1   ,0x12); 
+ 755   4       else if(mode ==7 ) time[6] = giam(time[6],0x1 ,0x20); 
+ 756   4       }  
+ 757   3       }
+ 758   2       }
+ 759   1       else l = 0;    
+ 760   1       }
+ 761           void kiem_tra_ds (void)
+ 762           { 
+ 763   1       read_ds();
+ 764   1       if(time[0] & 0x80)
+ 765   1       {
+ 766   2       time[0] = 0x1;
+ 767   2       time[1] = 0x40;
+ 768   2       time[2] = 0x6;
+ 769   2       time[3] = 0x3;
+ 770   2       time[4] = 0x1;
+ 771   2       time[5] = 0x12;
+ 772   2       time[6] = 0x15;
+ 773   2       write_ds(); 
+ 774   2       }
+ 775   1       }
+ 776           void main()
+ 777           {  
+ 778   1       kiem_tra_ds();
+ 779   1       am_lich (1);
+ 780   1       delay_ms(500);
+ 781   1       lcd_init();
+ 782   1       delay_ms(100);
+ 783   1       lcd_clear();
+ 784   1       delay_ms(300);
+ 785   1       while(1){
+ 786   2       if(mode ==0)
+ 787   2       {
+ 788   3       read_ds();
+ 789   3       ReadTemperature(); 
+ 790   3       am_lich (0);
+ 791   3       }
+ 792   2       lcd_gotoxy(0,0); lcd_puts_amban("  DAM CLOCK V1  "); 
+ 793   2       lcd_gotoxy(0,1); lcd_putchar16_1(((time[2]%100)>> 4)+48); lcd_putchar16_2(((time[2]%100)>> 4)+48);
+ 794   2       lcd_putchar16_1((time[2]& 0xf)+48); 
+ 795   2       lcd_putchar16_2((time[2]& 0xf)+48); 
+ 796   2       lcd_putchar16_1(':');   
+ 797   2       lcd_putchar16_2(':');
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 14  
+
+ 798   2       lcd_putchar16_1(((time[1]%100)>> 4)+48); 
+ 799   2       lcd_putchar16_2(((time[1]%100)>> 4)+48); 
+ 800   2       lcd_putchar16_1((time[1]& 0xf)+48); 
+ 801   2       lcd_putchar16_2((time[1]& 0xf)+48); 
+ 802   2       lcd_putchar16_1(':');   
+ 803   2       lcd_putchar16_2(':');
+ 804   2       lcd_putchar16_1(((time[0]%100)>> 4)+48); 
+ 805   2       lcd_putchar16_2(((time[0]%100)>> 4)+48); 
+ 806   2       lcd_putchar16_1((time[0]& 0xf)+48); 
+ 807   2       lcd_putchar16_2((time[0]& 0xf)+48);
+ 808   2       lcd_gotoxy(0,2); 
+ 809   2       lcd_putchar16_3(((time[2]%100)>> 4)+48); 
+ 810   2       lcd_putchar16_4(((time[2]%100)>> 4)+48); 
+ 811   2       lcd_putchar16_3((time[2]& 0xf)+48); 
+ 812   2       lcd_putchar16_4((time[2]& 0xf)+48); 
+ 813   2       lcd_putchar16_3(':');     
+ 814   2       lcd_putchar16_4(':');  
+ 815   2       lcd_putchar16_3(((time[1]%100)>> 4)+48); 
+ 816   2       lcd_putchar16_4(((time[1]%100)>> 4)+48); 
+ 817   2       lcd_putchar16_3((time[1]& 0xf)+48); 
+ 818   2       lcd_putchar16_4((time[1]& 0xf)+48); 
+ 819   2       lcd_putchar16_3(':'); 
+ 820   2       lcd_putchar16_4(':');
+ 821   2       lcd_putchar16_3(((time[0]%100)>> 4)+48);  
+ 822   2       lcd_putchar16_4(((time[0]%100)>> 4)+48); 
+ 823   2       lcd_putchar16_3((time[0]& 0xf)+48); 
+ 824   2       lcd_putchar16_4((time[0]& 0xf)+48);
+ 825   2       lcd_gotoxy(0,4); 
+ 826   2       lcd_puts_amban(" 20");
+ 827   2       lcd_gotoxy(3,4); 
+ 828   2       lcd_putchar_amban(((time[6]%100)>> 4)+48); 
+ 829   2       lcd_putchar_amban((time[6]& 0xf)+48);
+ 830   2       lcd_gotoxy(5,4); 
+ 831   2       lcd_puts_amban(" ");
+ 832   2       lcd_gotoxy(10,4); 
+ 833   2       lcd_puts_amban("  AL  ");
+ 834   2       lcd_gotoxy(6,4); if(time[3]==0x01) { lcd_putchar16_1('.');} else { lcd_putchar16_1(',');}
+ 835   2       lcd_gotoxy(7,4); if(time[3]==0x01) { lcd_putchar16_2('.');} else { lcd_putchar16_2(',');}
+ 836   2       lcd_gotoxy(6,5); if(time[3]==0x01) { lcd_putchar16_3('.');} else { lcd_putchar16_3(',');}
+ 837   2       lcd_gotoxy(7,5); if(time[3]==0x01) { lcd_putchar16_4('.');} else { lcd_putchar16_4(',');}
+ 838   2       lcd_gotoxy(8,4); if(time[3]==0x01) { lcd_putchar16_1('-');} else { lcd_putchar16_1((time[3]& 0xf)+48);}   
+ 839   2       lcd_gotoxy(9,4); if(time[3]==0x01) { lcd_putchar16_2('-');} else { lcd_putchar16_2((time[3]& 0xf)+48);}    
+             - 
+ 840   2       lcd_gotoxy(8,5); if(time[3]==0x01) { lcd_putchar16_3('-');} else { lcd_putchar16_3((time[3]& 0xf)+48);}   
+ 841   2       lcd_gotoxy(9,5); if(time[3]==0x01) { lcd_putchar16_4('-');} else { lcd_putchar16_4((time[3]& 0xf)+48);}
+ 842   2       lcd_gotoxy(0,5); 
+ 843   2       lcd_putchar(((time[4]%100)>> 4)+48); lcd_putchar((time[4]& 0xf)+48); lcd_putchar('/');
+ 844   2       lcd_gotoxy(3,5); 
+ 845   2       lcd_putchar(((time[5]%100)>> 4)+48); lcd_putchar((time[5]& 0xf)+48);
+ 846   2       lcd_gotoxy(11,5); 
+ 847   2       lcd_putchar(((ngay_al%100)>> 4)+48); lcd_putchar((ngay_al& 0xf)+48); lcd_putchar('/');
+ 848   2       lcd_gotoxy(14,5); 
+ 849   2       lcd_putchar((( thang_al%100)>> 4)+48); lcd_putchar(( thang_al& 0xf)+48);
+ 850   2       lcd_gotoxy(0,6); 
+ 851   2       lcd_puts_4("++++++++++++++++");
+ 852   2       if ( mode == 0) { lcd_gotoxy(3,7); lcd_puts_4("*)(");   lcd_gotoxy(7,7); lcd_putchar(((temp1%100)/10)+48);
+             -  lcd_putchar((temp1%10)+48); lcd_putchar(','); lcd_putchar(((temp2%100)/10)+48); lcd_puts("*C    ");  }
+ 853   2       else if ( mode == 1) {   
+ 854   3      lcd_gotoxy(3,7); lcd_puts("SET Giay  ");}
+ 855   2       else if ( mode == 2) {   
+ 856   3      lcd_gotoxy(3,7); lcd_puts("SET Phut  ");}
+ 857   2       else if ( mode == 3) {   
+C51 COMPILER V9.52.0.0   GLCD_HOMEPHONE_V1                                                 12/04/2015 21:48:48 PAGE 15  
+
+ 858   3      lcd_gotoxy(3,7); lcd_puts("SET Gio   ");}
+ 859   2       else if ( mode == 4) {   
+ 860   3      lcd_gotoxy(3,7); lcd_puts("SET Thu   ");}
+ 861   2       else if ( mode == 5) {   
+ 862   3      lcd_gotoxy(3,7); lcd_puts("SET Ngay  "); am_lich (1);}
+ 863   2       else if ( mode == 6) {   
+ 864   3      lcd_gotoxy(3,7); lcd_puts("SET Thang "); am_lich (1);}
+ 865   2       else if ( mode == 7) {   
+ 866   3      lcd_gotoxy(3,7); lcd_puts("SET Nam   "); am_lich (1);}  
+ 867   2       delay_ms(200);
+ 868   2       scan_key(); 
+ 869   2       } 
+ 870   1       }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3278    ----
+   CONSTANT SIZE    =   2791    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     17      19
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       3
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
